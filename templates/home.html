@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food and Sugar Input Form</title>
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        .hidden { display: none; }
+        .disabled { pointer-events: none; opacity: 0.6; }
+    </style>
+</head>
+<body class="bg-light">
+<main class="container mt-5">
+  <div class="row">
+      <div class="col-md-6">
+          <h2 class="mb-4">Insulin Dose Calculation</h2>
+          <form>
+            <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="name">Enter Current Sugar:</label>
+                            <input type="text" class="form-control" id="name" placeholder="Current Sugar">
+                        </div>
+            </div>
+            <div class="form-group">
+                <label for="foodType">Choose Food Type:</label>
+                <select class="form-control" id="foodType">
+                    <option value="">--Select Food Type--</option>
+                    <option value="bread">RICE</option>
+                    <option value="rice">BREADS</option>
+                    <option value="noodles">BISCUITS</option>
+                    <option value="noodles">CEREALS</option>
+                    <option value="noodles">STARCHY VEGETABLES</option>
+                    <option value="noodles">MILK AND ALTERNATIVES</option>
+                    <option value="noodles">FRUITS</option>
+                    <option value="noodles">NUTS</option>
+                    <option value="done">Done</option> <!-- Added Done option -->
+                </select>
+            </div>
+    
+            <div class="form-group hidden" id="subTypeContainer">
+                <h4>Select Subtype:</h4>
+                <select class="form-control" id="subType">
+                    <option value="">--Select Subtype--</option>
+                </select>
+            </div>
+    
+            <button class="btn btn-primary hidden" id="addButton">Add to List</button>
+            
+            <h4 class="mt-4">Selected Items:</h4>
+            <ul id="selectedItems" class="list-group"></ul>
+        </form>
+    </div>
+    <script>
+        const foodSubtypes = {
+            RICE : [ "Rice(White)", "Rice (Brown)", "Rice porridge", "Rice noodles"],
+            BREADS: ["White bread", "Whole wheat bread", "Roti", "Chapati"],
+            BISCUITS: ["Digestive biscuits", "Cream biscuits"],
+            CEREALS: ["Cornflakes", "Oats"]
+        };
+    
+        let sessionEnded = false;
+        let sugarEntered = false;
+        let selectedFoodItems = [];
+    
+        // Ask for sugar level once and disable sugar input
+        $('#foodForm').submit(function(event) {
+            event.preventDefault();  // Prevent form submission
+            
+            if (!sugarEntered) {
+                const sugarValue = $('#sugar').val().trim();
+                if (sugarValue) {
+                    sugarEntered = true;
+                    $('#sugar').prop('disabled', true);  // Disable sugar input after first entry
+                    alert('Sugar level recorded: ' + sugarValue);
+                } else {
+                    alert('Please enter your current sugar level.');
+                    return;
+                }
+            }
+        });
+    
+        $('#foodType').change(function() {
+            if (sessionEnded) return; 
+    
+            const selectedType = $(this).val();
+            const subTypeSelect = $('#subType');
+            subTypeSelect.empty().append('<option value="">--Select Subtype--</option>');
+    
+            if (selectedType === "done") {
+                sessionEnded = true;
+                $('#foodType').addClass('disabled'); 
+                $('#subTypeContainer').addClass('hidden');
+                $('#addButton').addClass('hidden');
+                alert('Session has ended. No more food items can be added.');
+                calculateTotalInsulin();  // Call function to calculate insulin
+                return;
+            }
+    
+            if (selectedType) {
+                foodSubtypes[selectedType].forEach(item => {
+                    subTypeSelect.append(`<option value="${item}">${item}</option>`);
+                });
+                $('#subTypeContainer').removeClass('hidden');
+                $('#addButton').addClass('hidden');
+            } else {
+                $('#subTypeContainer').addClass('hidden');
+                $('#addButton').addClass('hidden');
+            }
+        });
+    
+        $('#subType').change(function() {
+            if (sessionEnded) return;
+    
+            const selectedSubtype = $(this).val();
+            if (selectedSubtype) {
+                $('#addButton').removeClass('hidden');
+            } else {
+                $('#addButton').addClass('hidden');
+            }
+        });
+    
+        $('#addButton').click(function() {
+            if (sessionEnded) return;
+    
+            const selectedType = $('#foodType').val();
+            const selectedSubtype = $('#subType').val();
+            const servingInput = prompt(`Enter the number of servings for ${selectedSubtype} (e.g., '2 pieces', '1 bowl'):`);
+            
+            if (selectedType && selectedSubtype && servingInput) {
+                const itemText = `${selectedSubtype} (${selectedType})`;
+                $('#selectedItems').append(`<li class="list-group-item">${itemText}</li>`);
+    
+                // Add selected food to the list
+                selectedFoodItems.push({
+                    name: selectedSubtype,
+                    serving: servingInput
+                });
+    
+                $('#foodType').val('');
+                $('#subType').empty().append('<option value="">--Select Subtype--</option>');
+                $('#subTypeContainer').addClass('hidden');
+                $('#addButton').addClass('hidden');
+            } else {
+                alert('Please select a food type, subtype, and serving.');
+            }
+        });
+    
+        function calculateTotalInsulin() {
+            const bloodSugar = $('#sugar').val();
+    
+            $.ajax({
+                url: '/calculate-insulin',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({
+                    blood_sugar: bloodSugar,
+                    food_items: selectedFoodItems
+                }),
+                success: function(response) {
+                    alert(`Total insulin required: ${response.total_insulin.toFixed(2)} units`);
+                },
+                error: function(err) {
+                    alert('Error calculating insulin.');
+                }
+            });
+        }
+    </script>
+	<!-- End Footer -->
+
+   <!-- Start Socket -->
+	
+
+	<!-- End Socket -->
+
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
